@@ -26,7 +26,7 @@ require('dotenv').config();
 const app = express();
 
 // ✅ DB Connection outside the handler
-mongoose.connect(process.env.DATABASE_URL, {
+mongoose.connect("mongodb+srv://broadcastUser:asad2617146@cluster0.adoaooh.mongodb.net/broadcasting?retryWrites=true&w=majority&appName=Cluster0", {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => console.log("MongoDB connected"))
