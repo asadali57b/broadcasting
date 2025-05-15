@@ -17,9 +17,11 @@
 
 // module.exports = app;
 // api/index.js
+// api/index.js
 const express = require('express');
+const serverless = require('serverless-http');
 require('dotenv').config();
-require('../database'); // adjust path if needed
+require('../database'); // adjust this path to match your database connection file
 
 const app = express();
 
@@ -29,9 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 const broadcasting_routes = require('../routes/broadcasting_routes');
 app.use('/api/broadcasting', broadcasting_routes);
 
-// Optional test route
-app.get('/', (req, res) => res.send('API is live on Vercel'));
+app.get('/', (req, res) => res.send('API running on Vercel'));
 
-// Export as serverless function
-module.exports = app;
-module.exports.handler = (req, res) => app(req, res);
+// ❗️EXPORT handler (IMPORTANT)
+module.exports.handler = serverless(app);
