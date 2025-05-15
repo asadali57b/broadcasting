@@ -1,0 +1,23 @@
+const express = require('express');
+const router = express.Router();
+const User_controller = require('../controller/user_controller');
+const Message_controller = require('../controller/messages_controller');
+const auth = require('../middleware/auth');
+const status_controller = require('../controller/status_controller');
+const Group_controller = require('../controller/group_controller');
+const group_messages_controller = require('../controller/group_messagesController');
+const poll_controller = require('../controller/poll_controller');
+router.post('/user_register',User_controller.register );
+router.post('/user_login',User_controller.login);
+router.post('/send_message',auth, Message_controller.send_message);
+router.get('/get_messages',auth, Message_controller.get_messages);
+router.post('/add_status',auth, status_controller.add_status);
+router.delete('/delete_all_messages/:receiverId',auth, Message_controller.delete_chat_with_user);
+router.post('/create_group',auth, Group_controller.create_group);
+router.post('/send_group_message',auth, group_messages_controller.send_group_message);
+router.post('/create_poll',auth, poll_controller.create_poll);
+router.post('/vote_poll/:poll_id',auth, poll_controller.vote_poll);
+router.post('/forgot_password',User_controller.forgot_password);
+router.post('/reset_password/:token',User_controller.reset_password);
+
+module.exports = router;

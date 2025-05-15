@@ -1,0 +1,14 @@
+const express = require('express');
+require('dotenv').config();
+const app = express();
+require('./database');
+
+// ✅ Correct order: Body parsers first
+app.use(express.json()); // Parse JSON requests
+app.use(express.urlencoded({ extended: true })); // Parse form data
+
+// Routes
+const broadcasting_routes = require('./routes/broadcasting_routes');
+app.use('/api/broadcasting', broadcasting_routes);
+
+app.listen(`${process.env.PORT}`, () => console.log('Server running on port 5000'));
