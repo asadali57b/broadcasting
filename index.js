@@ -8,6 +8,10 @@ app.use(express.json()); // Parse JSON requests
 app.use(express.urlencoded({ extended: true })); // Parse form data
 
 // Routes
+app.get('/', (req, res) => {
+  res.send('API is running');
+});
+
 const broadcasting_routes = require('./routes/broadcasting_routes');
 app.use('/api/broadcasting', broadcasting_routes);
 
