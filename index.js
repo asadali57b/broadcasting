@@ -15,4 +15,4 @@ app.get('/', (req, res) => {
 const broadcasting_routes = require('./routes/broadcasting_routes');
 app.use('/api/broadcasting', broadcasting_routes);
 
-app.listen(`${process.env.PORT}`, () => console.log('Server running on port 5000'));
+module.exports = app;
