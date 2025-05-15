@@ -37,7 +37,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 const broadcasting_routes = require('../routes/broadcasting_routes');
-app.use('/api/broadcasting', broadcasting_routes);
+app.use('/api', broadcasting_routes);
 
 // ✅ Export serverless function
 module.exports = serverless(app);
