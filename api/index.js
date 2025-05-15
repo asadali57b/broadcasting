@@ -26,7 +26,7 @@ require('dotenv').config();
 const app = express();
 
 // ✅ DB Connection outside the handler
-mongoose.connect("mongodb+srv://broadcastUser:asad2617146@cluster0.adoaooh.mongodb.net/broadcasting?retryWrites=true&w=majority&appName=Cluster0", {
+mongoose.connect(process.env.DATABASE_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => console.log("MongoDB connected"))
@@ -37,7 +37,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 const broadcasting_routes = require('../routes/broadcasting_routes');
-app.use('/api', broadcasting_routes);
+app.use('/api/broadcasting', broadcasting_routes);
 
 // ✅ Export serverless function
 module.exports = serverless(app);
