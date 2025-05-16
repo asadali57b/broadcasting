@@ -26,11 +26,9 @@ require('dotenv').config();
 const app = express();
 
 // ✅ DB Connection outside the handler
-mongoose.connect(process.env.DATABASE_URL, {
- 
-}).then(() => console.log("MongoDB connected"))
-  .catch(err => console.log(err));
+const connectDB = require('../database');
 
+connectDB(); //
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
