@@ -66,7 +66,7 @@ async get_conversations(req, res) {
   try {
     const userId = req.user.userId;
 
-    // Get distinct users the current user has messaged with
+    // 1. Direct user-to-user messages
     const userConversations = await Message.aggregate([
       {
         $match: {
@@ -74,7 +74,7 @@ async get_conversations(req, res) {
         }
       },
       {
-        $sort: { createdAt: -1 }
+        $sort: { timestamp: -1 } // Correct field name
       },
       {
         $group: {
@@ -86,22 +86,22 @@ async get_conversations(req, res) {
             ]
           },
           lastMessage: { $first: '$content' },
-          timestamp: { $first: '$createdAt' }
+          timestamp: { $first: '$timestamp' } // Correct field name
         }
       }
     ]);
 
-    // Get all group chats the user is part of (optional: filter by group membership)
+    // 2. Group conversations
     const groupConversations = await group_messages.aggregate([
       { $match: { sender: userId } },
       {
-        $sort: { createdAt: -1 }
+        $sort: { timestamp: -1 } // Correct field name
       },
       {
         $group: {
           _id: '$group_id',
           lastMessage: { $first: '$content' },
-          timestamp: { $first: '$createdAt' }
+          timestamp: { $first: '$timestamp' } // Correct field name
         }
       }
     ]);
@@ -111,6 +111,7 @@ async get_conversations(req, res) {
     res.status(500).json({ error: error.message });
   }
 }
+
 
 
 
