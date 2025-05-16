@@ -19,23 +19,17 @@
 // api/index.js
 // api/index.js
 const express = require('express');
-const serverless = require('serverless-http');
-const mongoose = require('mongoose');
 require('dotenv').config();
+require('./database');
+const broadcastingRoutes = require('./routes/broadcasting_routes');
 
 const app = express();
 
-// ✅ DB Connection outside the handler
-const connectDB = require('../database');
-
-connectDB(); //
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-const broadcasting_routes = require('../routes/broadcasting_routes');
-app.use('/api/broadcasting', broadcasting_routes);
 
-// ✅ Export serverless function
-module.exports = serverless(app);
-// app.listen(5000, () => console.log('Server is running on port 5000'));
+app.use('/api/broadcasting', broadcastingRoutes);
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
