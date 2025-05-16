@@ -1,5 +1,6 @@
 const Message = require('../models/messages_model');
 const {message_validation_schema} = require('../middleware/validation');
+const group_messages=require('../models/group_messagesModel');
 class Message_Controller{
     async send_message(req,res){
         try{
@@ -60,6 +61,57 @@ class Message_Controller{
         res.status(500).json({ error: error.message });
     }
 }
+// GET /api/messages/conversations
+async get_conversations(req, res) {
+  try {
+    const userId = req.user.userId;
+
+    // Get distinct users the current user has messaged with
+    const userConversations = await Message.aggregate([
+      {
+        $match: {
+          $or: [{ sender: userId }, { reciever: userId }]
+        }
+      },
+      {
+        $sort: { createdAt: -1 }
+      },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $eq: ['$sender', userId] },
+              '$reciever',
+              '$sender'
+            ]
+          },
+          lastMessage: { $first: '$content' },
+          timestamp: { $first: '$createdAt' }
+        }
+      }
+    ]);
+
+    // Get all group chats the user is part of (optional: filter by group membership)
+    const groupConversations = await group_messages.aggregate([
+      { $match: { sender: userId } },
+      {
+        $sort: { createdAt: -1 }
+      },
+      {
+        $group: {
+          _id: '$group_id',
+          lastMessage: { $first: '$content' },
+          timestamp: { $first: '$createdAt' }
+        }
+      }
+    ]);
+
+    res.json({ userConversations, groupConversations });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 
 
     
