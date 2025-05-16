@@ -20,8 +20,8 @@
 // api/index.js
 const express = require('express');
 require('dotenv').config();
-require('./database');
-const broadcastingRoutes = require('./routes/broadcasting_routes');
+require('../database');
+const broadcastingRoutes = require('../routes/broadcasting_routes');
 
 const app = express();
 
