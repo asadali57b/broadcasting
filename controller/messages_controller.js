@@ -1,9 +1,9 @@
 const Message = require('../models/messages_model');
-const message_validation_schema = require('../middleware/validation');
+const {message_validation_schema} = require('../middleware/validation');
 class Message_Controller{
     async send_message(req,res){
         try{
-            const {receiver,content} = req.body;
+            const {reciever,content} = req.body;
             const { error } = message_validation_schema.validate(req.body);
 
             if (error) {
@@ -12,7 +12,7 @@ class Message_Controller{
             
             const new_message = await new Message({
                 sender:req.user.userId,
-                receiver,
+                reciever,
                 content,
                 
             }

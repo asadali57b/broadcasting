@@ -27,8 +27,7 @@ const app = express();
 
 // ✅ DB Connection outside the handler
 mongoose.connect(process.env.DATABASE_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
+ 
 }).then(() => console.log("MongoDB connected"))
   .catch(err => console.log(err));
 
@@ -41,3 +40,4 @@ app.use('/api/broadcasting', broadcasting_routes);
 
 // ✅ Export serverless function
 module.exports = serverless(app);
+// app.listen(5000, () => console.log('Server is running on port 5000'));

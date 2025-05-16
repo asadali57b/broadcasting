@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const user_services=require('../services/user_services');
 
 
-const user_validation_schema = require('../middleware/validation');
+const {user_validation_schema} = require('../middleware/validation');
 class User_controller{
     async register(req,res) {
 
