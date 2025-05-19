@@ -20,5 +20,7 @@ router.post('/vote_poll/:poll_id',auth, poll_controller.vote_poll);
 router.post('/forgot_password',User_controller.forgot_password);
 router.post('/reset_password/:token',User_controller.reset_password);
 router.get('/get_conversations',auth, Message_controller.get_conversations);
+router.get('/get_user_messages/:userId',auth, Message_controller.get_user_messages);
+router.get('/get_all_users',auth, User_controller.get_all_users);
 
 module.exports = router;

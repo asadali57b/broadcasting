@@ -62,11 +62,16 @@ class User_controller{
             if (!isPasswordValid) {
                 return res.status(401).json({ message: 'Invalid password' });
             }
+            user.last_seen = Math.floor(Date.now() / 1000);
+    user.is_active = true;
+    await user.save();
             const token = jwt.sign({
                  userId: user._id,
                  email: user.email,
                  is_admin: user.is_admin,
                  is_active: user.is_active,
+                 name: user.name,
+                 profile_pic: user.profile_pic,
                  phone_number: user.phone_number 
                 
                 }, 'secret', { expiresIn: '24hr' });
@@ -123,6 +128,54 @@ const user = await User.findOne({
     res.status(200).json({ message: 'Password reset successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+      }
+      async get_all_users(req,res){
+        try {
+             const users = await User.find({ _id: { $ne: req.user.userId } }).select('-password');
+             if (users.length === 0) {
+               return res.status(404).json({ message: 'No users found' });
+             }
+            res.status(200).json({ users });
+          } catch (err) {
+            res.status(500).json({ error: err.message });
+          }
+      }
+      async get_user_by_id(req,res){
+         try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+      }
+      async update_user(req,res){
+        try {
+    const { name, email, phone_number, profile_pic, is_active } = req.body;
+    
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      { 
+        name, 
+        email, 
+        phone_number, 
+        profile_pic, 
+        is_active,
+        last_seen: Math.floor(Date.now() / 1000)
+      },
+      { new: true }
+    ).select('-password');
+    
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
       }
 }
