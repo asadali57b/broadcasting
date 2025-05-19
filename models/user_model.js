@@ -31,6 +31,10 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    last_seen: {
+        type: Number,
+        default: () => Math.floor(Date.now() / 1000) // Unix timestamp
+    },
     created_at: {
         type: Number,
         default: () => Math.floor(Date.now() / 1000) // Unix timestamp
