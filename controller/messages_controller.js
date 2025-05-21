@@ -1,30 +1,72 @@
 const Message = require('../models/messages_model');
 const {message_validation_schema} = require('../middleware/validation');
 const group_messages=require('../models/group_messagesModel');
+const group=require('../models/group_model');
 const mongoose = require('mongoose');
 class Message_Controller{
-    async send_message(req,res){
-        try{
-            const {reciever,content} = req.body;
-            const { error } = message_validation_schema.validate(req.body);
+    // async send_message(req,res){
+    //     try{
+    //         const {receiver,content} = req.body;
+    //         const { error } = message_validation_schema.validate(req.body);
 
-            if (error) {
-                return res.status(400).json({ error: error.details[0].message });
-            }
+    //         if (error) {
+    //             return res.status(400).json({ error: error.details[0].message });
+    //         }
             
-            const new_message = await new Message({
-                sender:req.user.userId,
-                reciever,
-                content,
+    //         const new_message = await new Message({
+    //             sender:req.user.userId,
+    //             receiver,
+    //             content,
                 
-            }
-            );
-            await new_message.save();
-            res.status(200).json({message: "Message sent successfully"});
-        }catch(error){
-            res.status(500).json({error: error.message});
+    //         }
+    //         );
+    //         await new_message.save();
+    //         res.status(200).json({message: "Message sent successfully"});
+    //     }catch(error){
+    //         res.status(500).json({error: error.message});
+    //     }
+    // };
+
+    async send_message(req,res){
+    try{
+        const {receiver,content} = req.body;
+        const { error } = message_validation_schema.validate(req.body);
+
+        if (error) {
+            return res.status(400).json({ error: error.details[0].message });
         }
-    };
+        
+        const new_message = await new Message({
+            sender: req.user.userId,
+            receiver,
+            content,
+        });
+        await new_message.save();
+        
+        // Socket.io emit
+        const io = req.app.get('io');
+        if (io) {
+            // Create a unique room ID for two users
+            const participants = [req.user.userId, receiver].sort();
+            const roomId = `chat:${participants.join('-')}`;
+            
+            io.to(roomId).emit('newMessage', {
+                _id: new_message._id,
+                sender: new_message.sender,
+                receiver: new_message.receiver,
+                content: new_message.content,
+                message_type: new_message.message_type,
+                is_seen: new_message.is_seen,
+                timestamp: new_message.timestamp
+            });
+        }
+        
+        res.status(200).json({message: "Message sent successfully"});
+    } catch(error){
+        res.status(500).json({error: error.message});
+    }
+}
+
     async get_messages(req, res) {
         try {
             const userId = req.user.userId;
@@ -64,203 +106,192 @@ class Message_Controller{
 }
 // GET /api/messages/conversations
 async get_conversations(req, res) {
-  // try {
-  //   const userId = new mongoose.Types.ObjectId(req.user.userId);
+ try {
+    const userId = req.user.userId;
 
-  //   // 1. User-to-user conversations
-  //   const userConversations = await Message.aggregate([
-  //     {
-  //       $match: {
-  //         $or: [{ sender: userId }, { reciever: userId }]
-  //       }
-  //     },
-  //     { $sort: { timestamp: -1 } },
-  //     {
-  //       $group: {
-  //         _id: {
-  //           $cond: [
-  //             { $eq: ['$sender', userId] },
-  //             '$reciever',
-  //             '$sender'
-  //           ]
-  //         },
-  //         lastMessage: { $first: '$content' },
-  //         timestamp: { $first: '$timestamp' }
-  //       }
-  //     },
-  //     {
-  //       $lookup: {
-  //         from: 'users', // collection name in MongoDB
-  //         localField: '_id',
-  //         foreignField: '_id',
-  //         as: 'userInfo'
-  //       }
-  //     },
-  //     {
-  //       $unwind: '$userInfo'
-  //     },
-  //     {
-  //       $project: {
-  //         _id: 0,
-  //         userId: '$_id',
-  //         lastMessage: 1,
-  //         timestamp: 1,
-  //         user: {
-  //           _id: '$userInfo._id',
-  //           name: '$userInfo.name',
-  //           email: '$userInfo.email',
-  //           phone_number: '$userInfo.phone_number',
-  //           // Add more fields if needed
-  //         }
-  //       }
-  //     }
-  //   ]);
-
-  //   // 2. Group conversations
-  //   const groupConversations = await group_messages.aggregate([
-  //     { $match: { sender: userId } },
-  //     { $sort: { timestamp: -1 } },
-  //     {
-  //       $group: {
-  //         _id: '$group_id',
-  //         lastMessage: { $first: '$content' },
-  //         timestamp: { $first: '$timestamp' }
-  //       }
-  //     },
-  //     {
-  //       $lookup: {
-  //         from: 'groups', // adjust to your actual group collection name
-  //         localField: '_id',
-  //         foreignField: '_id',
-  //         as: 'groupInfo'
-  //       }
-  //     },
-  //     {
-  //       $unwind: '$groupInfo'
-  //     },
-  //     {
-  //       $project: {
-  //         _id: 0,
-  //         groupId: '$_id',
-  //         lastMessage: 1,
-  //         timestamp: 1,
-  //         group: {
-  //           _id: '$groupInfo._id',
-  //           name: '$groupInfo.name',
-  //           description: '$groupInfo.description',
-  //           // Add more fields if needed
-  //         }
-  //       }
-  //     }
-  //   ]);
-
-  //   res.json({ userConversations, groupConversations });
-  // } catch (error) {
-  //   console.error(error);
-  //   res.status(500).json({ error: error.message });
-  // }
-   try {
-    const userId = req.params.userId;
-    
-    // Find all messages where the user is either sender or receiver
+    // === USER-TO-USER CONVERSATIONS ===
     const messages = await Message.find({
-      $or: [
-        { sender: userId },
-        { reciever: userId }
-      ]
+      $or: [{ sender: userId }, { receiver: userId }]
     })
-    .populate('sender', 'name profile_pic is_active last_seen')
-    .populate('reciever', 'name profile_pic is_active last_seen')
-    .sort({ timestamp: -1 });
-    
-    // Group messages by conversation
-    const conversations = {};
-    
-    messages.forEach(message => {
-      // Determine the other user in the conversation
-      const otherUser = message.sender._id.toString() === userId 
-        ? message.reciever._id.toString() 
-        : message.sender._id.toString();
-      
-      if (!conversations[otherUser]) {
-        const user = message.sender._id.toString() === userId 
-          ? message.reciever 
-          : message.sender;
-          
-        conversations[otherUser] = {
-          user: {
-            _id: user._id,
-            name: user.name,
-            profile_pic: user.profile_pic,
-            is_active: user.is_active,
-            last_seen: user.last_seen
-          },
-          lastMessage: {
-            _id: message._id,
-            content: message.content,
-            message_type: message.message_type,
-            is_seen: message.is_seen,
-            timestamp: message.timestamp,
-            sender: message.sender._id.toString()
-          },
-          unreadCount: message.reciever._id.toString() === userId && !message.is_seen ? 1 : 0
-        };
-      } else if (message.timestamp > conversations[otherUser].lastMessage.timestamp) {
-        // Update last message if this one is newer
-        conversations[otherUser].lastMessage = {
-          _id: message._id,
-          content: message.content,
-          message_type: message.message_type,
-          is_seen: message.is_seen,
-          timestamp: message.timestamp,
-          sender: message.sender._id.toString()
-        };
-        
-        // Update unread count
-        if (message.reciever._id.toString() === userId && !message.is_seen) {
-          conversations[otherUser].unreadCount++;
-        }
-      } else if (message.reciever._id.toString() === userId && !message.is_seen) {
-        // Increment unread count for older messages
-        conversations[otherUser].unreadCount++;
-      }
+      .sort({ timestamp: -1 })
+      .populate('sender', 'name email phone_number profile_pic')
+      .populate('receiver', 'name email phone_number profile_pic')
+      .exec();
+
+
+
+const userConvoMap = new Map();
+
+for (const msg of messages) {
+  const isSender = msg.sender._id.toString() === userId;
+  const otherUser = isSender ? msg.receiver : msg.sender;
+  const otherUserId = otherUser._id.toString();
+
+  if (!userConvoMap.has(otherUserId)) {
+    userConvoMap.set(otherUserId, {
+      userId: otherUser._id,
+      name: otherUser.name,
+      profile_pic: otherUser.profile_pic || '',
+      total_messages: 0,
+      unread_messages: 0,
+      received_messages: [],
+      sent_messages: []
     });
-    
-    // Convert to array and sort by last message timestamp
-    const result = Object.values(conversations).sort((a, b) => 
-      b.lastMessage.timestamp - a.lastMessage.timestamp
-    );
-    
-    res.json(result);
+  }
+
+  const convo = userConvoMap.get(otherUserId);
+
+  const formattedMessage = {
+    _id: msg._id,
+    content: msg.content,
+    sender: msg.sender._id,
+    receiver: msg.receiver._id,
+    message_type: msg.message_type,
+    is_seen: msg.is_seen,
+    timestamp: msg.timestamp
+  };
+
+  if (!msg.is_seen && msg.receiver._id.toString() === userId) {
+    convo.unread_messages += 1;
+  }
+
+  if (isSender) {
+    convo.sent_messages.push(formattedMessage);
+  } else {
+    convo.received_messages.push(formattedMessage);
+  }
+
+  convo.total_messages += 1;
+}
+
+const userConversations = Array.from(userConvoMap.values());
+
+
+    // === GROUP CONVERSATIONS ===
+    const groups = await group.find({ members: userId }).lean();
+
+    // 2. For each group, fetch messages and build response
+  const groupConversations = await Promise.all(
+  groups.map(async (group) => {
+    const messages = await group_messages.find({ group_id: group._id })
+      .populate('sender', 'name profile_pic')
+      .sort({ timestamp: 1 })
+      .lean();
+
+    const received_messages = [];
+    const sent_messages = [];
+
+    for (const msg of messages) {
+      const formatted = {
+        _id: msg._id,
+        content: msg.content,
+        message_type: msg.message_type,
+        is_seen: msg.is_seen,
+        timestamp: msg.timestamp,
+        sender: {
+          _id: msg.sender._id,
+          name: msg.sender.name,
+          profile_pic: msg.sender.profile_pic
+        }
+      };
+
+      if (msg.sender._id.toString() === userId) {
+        sent_messages.push(formatted);
+      } else {
+        received_messages.push(formatted);
+      }
+    }
+
+    const unread_messages = received_messages.filter(
+      msg => msg.is_seen === false
+    ).length;
+
+    return {
+      group_id: group._id,
+      name: group.name,
+      group_pic: group.group_pic,
+      total_members: group.members.length,
+      total_messages: messages.length,
+      unread_messages,
+      received_messages,
+      sent_messages
+    };
+  })
+);
+    res.json({ userConversations,groupConversations });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ error: error.message });
   }
 }
+
 // GET /api/messages/user/:userId
 async get_user_messages(req, res) {
   try {
     const currentUser = req.user.userId;
     const otherUser = req.params.userId;
-
     const messages = await Message.find({
       $or: [
-        { sender: currentUser, reciever: otherUser },
-        { sender: otherUser, reciever: currentUser }
+        { sender: currentUser, receiver: otherUser },
+        { sender: otherUser, receiver: currentUser }
       ]
     }).sort({ createdAt: 1 });
-
-    res.json({ messages });
+    
+    res.json( messages );
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 }
 
-
-
-
-
-
+// async mark_seen(req,res){
+//   try {
+//     const { sender, receiver } = req.body;
     
+//     if (!sender || !receiver) {
+//       return res.status(400).json({ message: 'Sender and receiver IDs are required' });
+//     }
+    
+//     const result = await Message.updateMany(
+//       { sender, receiver, is_seen: false },
+//       { $set: { is_seen: true } }
+//     );
+    
+//     res.json({ message: 'Messages marked as seen', count: result.modifiedCount });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// }
+
+async mark_seen(req,res){
+  try {
+    const { sender, receiver } = req.body;
+    
+    if (!sender || !receiver) {
+      return res.status(400).json({ message: 'Sender and receiver IDs are required' });
+    }
+    
+    const result = await Message.updateMany(
+      { sender, receiver, is_seen: false },
+      { $set: { is_seen: true } }
+    );
+    
+    // Socket.io emit
+    const io = req.app.get('io');
+    if (io) {
+        // Create a unique room ID for two users
+        const participants = [sender, receiver].sort();
+        const roomId = `chat:${participants.join('-')}`;
+        
+        io.to(roomId).emit('messagesRead', {
+            readBy: receiver
+        });
+    }
+    
+    res.json({ message: 'Messages marked as seen', count: result.modifiedCount });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
 }
 
 module.exports = new Message_Controller();

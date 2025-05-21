@@ -30,8 +30,7 @@ class poll_controller{
     }
     async vote_poll(req,res){
         try {
-        const poll_id = req.params.poll_id;
-        const { optionIndex } = req.body;
+        const { optionIndex, poll_id } = req.body;
         const { error } = vote_validation_schema.validate(req.body);
 
         if (error) {

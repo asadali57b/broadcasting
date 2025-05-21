@@ -47,12 +47,49 @@ const user_validation_schema = Joi.object({
         .optional()
         .default(false),
 });
-const message_validation_schema = Joi.object({
-   reciever: Joi.string()
+
+const uodate_user_validation_schema = Joi.object({
+    id: Joi.string()
         .required()
         .messages({
-            'any.required': 'reciever is required',
-            'string.empty': 'reciever cannot be empty',
+            'any.required': 'id is required',
+            'string.empty': 'id cannot be empty',
+        }),
+    name: Joi.string()
+        .optional()
+        .messages({
+            'string.empty': 'name cannot be empty',
+        }),
+    email: Joi.string()
+        .email()
+        .optional()
+        .messages({
+            'string.email': 'email must be a valid email address',
+            'string.empty': 'email cannot be empty',
+        }),
+     phone_number: Joi.string()
+        .optional()
+        .messages({
+            'string.empty': 'phone_number cannot be empty',
+        }),
+    profile_pic: Joi.string()
+        .uri()
+        .optional().messages({
+            'string.uri': 'profile pic must be a valid URL',
+        }),
+        is_active: Joi.boolean()
+        .optional().messages({
+            'string.empty': 'is_active cannot be empty',
+        })   
+   
+});
+
+const message_validation_schema = Joi.object({
+   receiver: Joi.string()
+        .required()
+        .messages({
+            'any.required': 'receiver is required',
+            'string.empty': 'receiver cannot be empty',
         }),
     content: Joi.string()
         .required()
@@ -62,6 +99,8 @@ const message_validation_schema = Joi.object({
         }),
 
 });
+
+
 const group_validation_schema = Joi.object({
     name: Joi.string()
         .required()
@@ -83,6 +122,31 @@ const group_validation_schema = Joi.object({
             'string.uri': 'group pic must be a valid URL',
         }),
 });
+
+const update_group_validation_schema = Joi.object({
+    id: Joi.string()
+        .required()
+        .messages({
+            'any.required': 'id is required',
+            'string.empty': 'id cannot be empty',
+        }),
+    name: Joi.string()
+        .optional()
+        .messages({
+            'string.empty': 'name cannot be empty',
+        }),
+    group_pic: Joi.string()
+        .uri()
+        .optional()
+        .messages({
+            'string.uri': 'group pic must be a valid URL',
+        }),
+        members: Joi.array()
+        .optional()
+        .messages({
+            'string.empty': 'members cannot be empty',
+        }),
+})
 const group_message_validation_schema = Joi.object({
     group_id: Joi.string()
         .required()
@@ -120,6 +184,12 @@ const poll_validation_schema = Joi.object({
 
 })
 const vote_validation_schema = Joi.object({
+    poll_id: Joi.string()
+        .required()
+        .messages({
+            'any.required': 'poll_id is required',
+            'string.empty': 'poll_id cannot be empty',
+        }),
     optionIndex: Joi.number()
         .required()
         .messages({
@@ -145,4 +215,4 @@ const status_validation_schema = Joi.object({
         .optional()
         .default(''),
 })
-module.exports = {user_validation_schema, message_validation_schema,group_validation_schema,group_message_validation_schema,poll_validation_schema,vote_validation_schema,status_validation_schema};
+module.exports = {user_validation_schema,uodate_user_validation_schema, message_validation_schema,group_validation_schema,update_group_validation_schema,group_message_validation_schema,poll_validation_schema,vote_validation_schema,status_validation_schema};

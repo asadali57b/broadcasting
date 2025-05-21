@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const user_services=require('../services/user_services');
 
 
-const {user_validation_schema} = require('../middleware/validation');
+const {user_validation_schema,uodate_user_validation_schema} = require('../middleware/validation');
 class User_controller{
     async register(req,res) {
 
@@ -51,35 +51,77 @@ class User_controller{
             res.status(500).json({ error: err.message });
         }
       }
-      async login(req,res) {
-        const { email, password } = req.body;
-        try {
-            const user = await User.findOne({ email });
-            if (!user) {
-                return res.status(401).json({ message: 'User not found' });
-            }
-            const isPasswordValid = await bcrypt.compare(password, user.password);
-            if (!isPasswordValid) {
-                return res.status(401).json({ message: 'Invalid password' });
-            }
-            user.last_seen = Math.floor(Date.now() / 1000);
-    user.is_active = true;
-    await user.save();
-            const token = jwt.sign({
-                 userId: user._id,
-                 email: user.email,
-                 is_admin: user.is_admin,
-                 is_active: user.is_active,
-                 name: user.name,
-                 profile_pic: user.profile_pic,
-                 phone_number: user.phone_number 
+    //   async login(req,res) {
+    //     const { email, password } = req.body;
+    //     try {
+    //         const user = await User.findOne({ email });
+    //         if (!user) {
+    //             return res.status(401).json({ message: 'User not found' });
+    //         }
+    //         const isPasswordValid = await bcrypt.compare(password, user.password);
+    //         if (!isPasswordValid) {
+    //             return res.status(401).json({ message: 'Invalid password' });
+    //         }
+    //         user.last_seen = Math.floor(Date.now() / 1000);
+    // user.is_active = true;
+    // await user.save();
+    //         const token = jwt.sign({
+    //              userId: user._id,
+    //              email: user.email,
+    //              is_admin: user.is_admin,
+    //              is_active: user.is_active,
+    //              name: user.name,
+    //              profile_pic: user.profile_pic,
+    //              phone_number: user.phone_number 
                 
-                }, 'secret', { expiresIn: '24hr' });
-            res.status(200).json({ token });
-        } catch (err) {
-            res.status(500).json({ error: err.message });
+    //             }, 'secret', { expiresIn: '24hr' });
+    //         res.status(200).json({ token });
+    //     } catch (err) {
+    //         res.status(500).json({ error: err.message });
+    //     }
+    //   }
+
+    async login(req,res) {
+    const { email, password } = req.body;
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(401).json({ message: 'User not found' });
         }
-      }
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: 'Invalid password' });
+        }
+        user.last_seen = Math.floor(Date.now() / 1000);
+        user.is_active = true;
+        await user.save();
+        
+        const token = jwt.sign({
+             userId: user._id,
+             email: user.email,
+             is_admin: user.is_admin,
+             is_active: user.is_active,
+             name: user.name,
+             profile_pic: user.profile_pic,
+             phone_number: user.phone_number 
+            
+            }, 'secret', { expiresIn: '24hr' });
+            
+        // Socket.io emit
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('userStatusChange', {
+                userId: user._id,
+                status: 'online'
+            });
+        }
+        
+        res.status(200).json({ token });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+}
+
       async forgot_password(req,res){
         const { email } = req.body;
 
@@ -130,34 +172,59 @@ const user = await User.findOne({
     res.status(500).json({ error: err.message });
   }
       }
-      async get_all_users(req,res){
-        try {
-             const users = await User.find({ _id: { $ne: req.user.userId } }).select('-password');
-             if (users.length === 0) {
-               return res.status(404).json({ message: 'No users found' });
-             }
-            res.status(200).json({ users });
-          } catch (err) {
-            res.status(500).json({ error: err.message });
-          }
-      }
+     async get_all_users(req, res) {
+  try {
+    const users = await User.find({ _id: { $ne: req.user.userId } }).select('-password');
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'No users found' });
+    }
+
+    // Optionally, you can format each user if needed:
+    const data = users.map(user => ({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone_number: user.phone_number,
+      profile_pic: user.profile_pic,
+      last_seen: user.last_seen,
+    }));
+
+    res.status(200).json( data );
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
       async get_user_by_id(req,res){
          try {
     const user = await User.findById(req.params.id).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json(user);
+    const data = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone_number: user.phone_number,
+      profile_pic: user.profile_pic,
+      last_seen: user.last_seen,
+    };
+    res.json(data);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
       }
-      async update_user(req,res){
+   async update_user(req,res){
         try {
-    const { name, email, phone_number, profile_pic, is_active } = req.body;
+    const {id, name, email, phone_number, profile_pic, is_active } = req.body;
+    const { error } = uodate_user_validation_schema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
     
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
+    const updatedUser = await User.findByIdAndUpdate(id,
+      // req.params.id,
       { 
         name, 
         email, 
@@ -172,11 +239,42 @@ const user = await User.findOne({
     if (!updatedUser) {
       return res.status(404).json({ message: 'User not found' });
     }
+      const data = {
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      phone_number: updatedUser.phone_number,
+      profile_pic: updatedUser.profile_pic,
+      last_seen: updatedUser.last_seen,
+    };
     
-    res.json(updatedUser);
+    res.json(data);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
       }
+
+      async logout(req, res) {
+    try {
+        // Update user status to offline
+        await User.findByIdAndUpdate(req.user.userId, {
+            is_active: false,
+            last_seen: Math.floor(Date.now() / 1000)
+        });
+        
+        // Socket.io emit
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('userStatusChange', {
+                userId: req.user.userId,
+                status: 'offline'
+            });
+        }
+        
+        res.status(200).json({ message: 'Logged out successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
 }
 module.exports = new User_controller();
