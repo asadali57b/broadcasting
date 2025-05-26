@@ -105,8 +105,128 @@ class Message_Controller{
     }
 }
 // GET /api/messages/conversations
+// async get_conversations(req, res) {
+//  try {
+//     const userId = req.user.userId;
+
+//     // === USER-TO-USER CONVERSATIONS ===
+//     const messages = await Message.find({
+//       $or: [{ sender: userId }, { receiver: userId }]
+//     })
+//       .sort({ timestamp: -1 })
+//       .populate('sender', 'name email phone_number profile_pic')
+//       .populate('receiver', 'name email phone_number profile_pic')
+//       .exec();
+
+
+
+// const userConvoMap = new Map();
+
+// for (const msg of messages) {
+//   const isSender = msg.sender._id.toString() === userId;
+//   const otherUser = isSender ? msg.receiver : msg.sender;
+//   const otherUserId = otherUser._id.toString();
+
+//   if (!userConvoMap.has(otherUserId)) {
+//     userConvoMap.set(otherUserId, {
+//       userId: otherUser._id,
+//       name: otherUser.name,
+//       profile_pic: otherUser.profile_pic || '',
+//       total_messages: 0,
+//       unread_messages: 0,
+//       received_messages: [],
+//       sent_messages: []
+//     });
+//   }
+
+//   const convo = userConvoMap.get(otherUserId);
+
+//   const formattedMessage = {
+//     _id: msg._id,
+//     content: msg.content,
+//     sender: msg.sender._id,
+//     receiver: msg.receiver._id,
+//     message_type: msg.message_type,
+//     is_seen: msg.is_seen,
+//     timestamp: msg.timestamp
+//   };
+
+//   if (!msg.is_seen && msg.receiver._id.toString() === userId) {
+//     convo.unread_messages += 1;
+//   }
+
+//   if (isSender) {
+//     convo.sent_messages.push(formattedMessage);
+//   } else {
+//     convo.received_messages.push(formattedMessage);
+//   }
+
+//   convo.total_messages += 1;
+// }
+
+// const userConversations = Array.from(userConvoMap.values());
+
+
+//     // === GROUP CONVERSATIONS ===
+//     const groups = await group.find({ members: userId }).lean();
+
+//     // 2. For each group, fetch messages and build response
+//   const groupConversations = await Promise.all(
+//   groups.map(async (group) => {
+//     const messages = await group_messages.find({ group_id: group._id })
+//       .populate('sender', 'name profile_pic')
+//       .sort({ timestamp: 1 })
+//       .lean();
+
+//     const received_messages = [];
+//     const sent_messages = [];
+
+//     for (const msg of messages) {
+//       const formatted = {
+//         _id: msg._id,
+//         content: msg.content,
+//         message_type: msg.message_type,
+//         is_seen: msg.is_seen,
+//         timestamp: msg.timestamp,
+//         sender: {
+//           _id: msg.sender._id,
+//           name: msg.sender.name,
+//           profile_pic: msg.sender.profile_pic
+//         }
+//       };
+
+//       if (msg.sender._id.toString() === userId) {
+//         sent_messages.push(formatted);
+//       } else {
+//         received_messages.push(formatted);
+//       }
+//     }
+
+//     const unread_messages = received_messages.filter(
+//       msg => msg.is_seen === false
+//     ).length;
+
+//     return {
+//       group_id: group._id,
+//       name: group.name,
+//       group_pic: group.group_pic,
+//       total_members: group.members.length,
+//       total_messages: messages.length,
+//       unread_messages,
+//       received_messages,
+//       sent_messages
+//     };
+//   })
+// );
+//     res.json({ userConversations,groupConversations });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: error.message });
+//   }
+// }
+
 async get_conversations(req, res) {
- try {
+  try {
     const userId = req.user.userId;
 
     // === USER-TO-USER CONVERSATIONS ===
@@ -118,113 +238,120 @@ async get_conversations(req, res) {
       .populate('receiver', 'name email phone_number profile_pic')
       .exec();
 
+    const userConvoMap = new Map();
 
+    for (const msg of messages) {
+      // Skip messages with null sender or receiver
+      if (!msg.sender || !msg.receiver) continue;
+      
+      const isSender = msg.sender._id.toString() === userId;
+      const otherUser = isSender ? msg.receiver : msg.sender;
+      
+      // Skip if otherUser is null or doesn't have _id
+      if (!otherUser || !otherUser._id) continue;
+      
+      const otherUserId = otherUser._id.toString();
 
-const userConvoMap = new Map();
+      if (!userConvoMap.has(otherUserId)) {
+        userConvoMap.set(otherUserId, {
+          userId: otherUser._id,
+          name: otherUser.name,
+          profile_pic: otherUser.profile_pic || '',
+          total_messages: 0,
+          unread_messages: 0,
+          received_messages: [],
+          sent_messages: []
+        });
+      }
 
-for (const msg of messages) {
-  const isSender = msg.sender._id.toString() === userId;
-  const otherUser = isSender ? msg.receiver : msg.sender;
-  const otherUserId = otherUser._id.toString();
+      const convo = userConvoMap.get(otherUserId);
 
-  if (!userConvoMap.has(otherUserId)) {
-    userConvoMap.set(otherUserId, {
-      userId: otherUser._id,
-      name: otherUser.name,
-      profile_pic: otherUser.profile_pic || '',
-      total_messages: 0,
-      unread_messages: 0,
-      received_messages: [],
-      sent_messages: []
-    });
-  }
+      const formattedMessage = {
+        _id: msg._id,
+        content: msg.content,
+        sender: msg.sender._id,
+        receiver: msg.receiver._id,
+        message_type: msg.message_type,
+        is_seen: msg.is_seen,
+        timestamp: msg.timestamp
+      };
 
-  const convo = userConvoMap.get(otherUserId);
+      if (!msg.is_seen && msg.receiver._id.toString() === userId) {
+        convo.unread_messages += 1;
+      }
 
-  const formattedMessage = {
-    _id: msg._id,
-    content: msg.content,
-    sender: msg.sender._id,
-    receiver: msg.receiver._id,
-    message_type: msg.message_type,
-    is_seen: msg.is_seen,
-    timestamp: msg.timestamp
-  };
+      if (isSender) {
+        convo.sent_messages.push(formattedMessage);
+      } else {
+        convo.received_messages.push(formattedMessage);
+      }
 
-  if (!msg.is_seen && msg.receiver._id.toString() === userId) {
-    convo.unread_messages += 1;
-  }
+      convo.total_messages += 1;
+    }
 
-  if (isSender) {
-    convo.sent_messages.push(formattedMessage);
-  } else {
-    convo.received_messages.push(formattedMessage);
-  }
-
-  convo.total_messages += 1;
-}
-
-const userConversations = Array.from(userConvoMap.values());
-
+    const userConversations = Array.from(userConvoMap.values());
 
     // === GROUP CONVERSATIONS ===
     const groups = await group.find({ members: userId }).lean();
 
     // 2. For each group, fetch messages and build response
-  const groupConversations = await Promise.all(
-  groups.map(async (group) => {
-    const messages = await group_messages.find({ group_id: group._id })
-      .populate('sender', 'name profile_pic')
-      .sort({ timestamp: 1 })
-      .lean();
+    const groupConversations = await Promise.all(
+      groups.map(async (group) => {
+        const messages = await group_messages.find({ group_id: group._id })
+          .populate('sender', 'name profile_pic')
+          .sort({ timestamp: 1 })
+          .lean();
 
-    const received_messages = [];
-    const sent_messages = [];
+        const received_messages = [];
+        const sent_messages = [];
 
-    for (const msg of messages) {
-      const formatted = {
-        _id: msg._id,
-        content: msg.content,
-        message_type: msg.message_type,
-        is_seen: msg.is_seen,
-        timestamp: msg.timestamp,
-        sender: {
-          _id: msg.sender._id,
-          name: msg.sender.name,
-          profile_pic: msg.sender.profile_pic
+        for (const msg of messages) {
+          // Skip messages with null sender
+          if (!msg.sender) continue;
+          
+          const formatted = {
+            _id: msg._id,
+            content: msg.content,
+            message_type: msg.message_type,
+            is_seen: msg.is_seen,
+            timestamp: msg.timestamp,
+            sender: {
+              _id: msg.sender._id,
+              name: msg.sender.name,
+              profile_pic: msg.sender.profile_pic || ''
+            }
+          };
+
+          if (msg.sender._id.toString() === userId) {
+            sent_messages.push(formatted);
+          } else {
+            received_messages.push(formatted);
+          }
         }
-      };
 
-      if (msg.sender._id.toString() === userId) {
-        sent_messages.push(formatted);
-      } else {
-        received_messages.push(formatted);
-      }
-    }
+        const unread_messages = received_messages.filter(
+          msg => msg.is_seen === false
+        ).length;
 
-    const unread_messages = received_messages.filter(
-      msg => msg.is_seen === false
-    ).length;
-
-    return {
-      group_id: group._id,
-      name: group.name,
-      group_pic: group.group_pic,
-      total_members: group.members.length,
-      total_messages: messages.length,
-      unread_messages,
-      received_messages,
-      sent_messages
-    };
-  })
-);
-    res.json({ userConversations,groupConversations });
+        return {
+          group_id: group._id,
+          name: group.name,
+          group_pic: group.group_pic || '',
+          total_members: group.members.length,
+          total_messages: messages.length,
+          unread_messages,
+          received_messages,
+          sent_messages
+        };
+      })
+    );
+    
+    res.json({ userConversations, groupConversations });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });
   }
 }
-
 // GET /api/messages/user/:userId
 async get_user_messages(req, res) {
   try {
