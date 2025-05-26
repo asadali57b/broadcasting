@@ -24,41 +24,58 @@ class group_messages_controller{
     //     }
     // }
 
-    async send_group_message(req,res){
-    try{
-        const {group_id,content} = req.body;
-        const { error } = group_message_validation_schema.validate(req.body);
+ async send_group_message(req, res) {
+    try {
+        const { group_id, content } = req.body;
 
+        const { error } = group_message_validation_schema.validate(req.body);
         if (error) {
             return res.status(400).json({ error: error.details[0].message });
         }
-        const new_message = await new group_messages({
-            sender:req.user.userId,
+
+        // Determine message type
+        let message_type = "text"; // default
+
+        if (typeof content === "string") {
+            // Check for image/file URLs
+            if (content.match(/\.(jpeg|jpg|png|gif|webp)$/i)) {
+                message_type = "image";
+            } else if (content.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/i)) {
+                message_type = "document";
+            } else if (content.match(/^https?:\/\/.+/)) {
+                message_type = "link";
+            }
+        }
+
+        const new_message = new group_messages({
+            sender: req.user.userId,
             group_id,
             content,
+            message_type, // set based on content
         });
+
         await new_message.save();
-        
-        // Socket.io emit
-        const io = req.app.get('io');
+
+        // Emit via Socket.io
+        const io = req.app.get("io");
         if (io) {
             const roomId = `group:${group_id}`;
-            
-            io.to(roomId).emit('newGroupMessage', {
+            io.to(roomId).emit("newGroupMessage", {
                 _id: new_message._id,
                 sender: new_message.sender,
                 group_id: new_message.group_id,
                 content: new_message.content,
                 message_type: new_message.message_type,
-                timestamp: new_message.timestamp
+                timestamp: new_message.timestamp,
             });
         }
-        
-        res.status(200).json({message: "Message sent successfully", data: new_message});
-    }catch(error){
-        res.status(500).json({error: error.message});
+
+        res.status(200).json({ message: "Message sent successfully", data: new_message });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 }
+
     async get_all_messages_of_group(req,res){
          try {
     const groupId = req.params.groupId;

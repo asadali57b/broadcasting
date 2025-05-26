@@ -35,11 +35,24 @@ class Message_Controller{
         if (error) {
             return res.status(400).json({ error: error.details[0].message });
         }
+        let message_type = "text"; // default
+
+        if (typeof content === "string") {
+            // Check for image/file URLs
+            if (content.match(/\.(jpeg|jpg|png|gif|webp)$/i)) {
+                message_type = "image";
+            } else if (content.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/i)) {
+                message_type = "document";
+            } else if (content.match(/^https?:\/\/.+/)) {
+                message_type = "link";
+            }
+        }
         
         const new_message = await new Message({
             sender: req.user.userId,
             receiver,
             content,
+            message_type
         });
         await new_message.save();
         
