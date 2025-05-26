@@ -42,22 +42,24 @@
 
 const express = require('express');
 require('dotenv').config();
-const mongoose = require('mongoose');  // Move mongoose to top
 const broadcastingRoutes = require('../routes/broadcasting_routes');
+const connectDB = require('../database'); // adjust path if needed
 const http = require('http');
 const cors = require('cors');
 const setupSocket = require('../socket');
 const app = express();
 
+connectDB();
+
 // Database connection - Move this to separate database.js file
-mongoose.connect(process.env.DATABASE_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000,  // Keep trying for 5 seconds
-  socketTimeoutMS: 45000,          // Close sockets after 45s inactivity
-})
-.then(() => console.log('Connected to MongoDB'))
-.catch(err => console.error('MongoDB connection error:', err));
+// mongoose.connect(process.env.DATABASE_URL, {
+//   useNewUrlParser: true,
+//   useUnifiedTopology: true,
+//   serverSelectionTimeoutMS: 5000,  // Keep trying for 5 seconds
+//   socketTimeoutMS: 45000,          // Close sockets after 45s inactivity
+// })
+// .then(() => console.log('Connected to MongoDB'))
+// .catch(err => console.error('MongoDB connection error:', err));
 
 const server = http.createServer(app);
 
