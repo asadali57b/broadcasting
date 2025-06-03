@@ -314,9 +314,9 @@ async  make_group_admin(req, res) {
     res.status(500).json({ message: error.message });
   }
 }
-async  get_non_group_members(req, res) {
+async get_non_group_members(req, res) {
   try {
-    const { groupId } = req.params; // or req.body / req.query depending on your route setup
+    const { groupId } = req.params;
 
     // Find the group by ID
     const targetGroup = await group.findById(groupId);
@@ -324,37 +324,42 @@ async  get_non_group_members(req, res) {
       return res.status(404).json({ message: "Group not found" });
     }
 
-    // Get users not in the group's members array
-    const nonGroupMembers = await User.find({ _id: { $nin: targetGroup.members } });
+    // Get users not in the group's members array, projecting only specific fields
+    const nonGroupMembers = await User.find(
+      { _id: { $nin: targetGroup.members } },
+      'name email profile_pic phone_number last_seen' // only these fields will be returned
+    );
 
     res.json(nonGroupMembers);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 }
-async  get_common_groups(req, res) {
+
+async get_common_groups(req, res) {
   try {
-    const loggedInUserId = req.user.userId; // Authenticated user
-    const { otherUserId } = req.params; // ID of the specific user
+    const loggedInUserId = req.user.userId;
+    const { otherUserId } = req.params;
 
     // Find groups where both users are members
     const commonGroups = await group.find({
       members: { $all: [loggedInUserId, otherUserId] }
-    });
+    }).populate('members', 'name email profile_pic phone_number last_seen'); // only select specific fields
 
     res.json(commonGroups);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 }
+
 async  get_group_members(req, res) {
    try {
     const { groupId } = req.params;
 
     // Find the group and populate members and admin
     const targetGroup = await group.findById(groupId)
-      .populate('members', 'name email')
-      .populate('admin', 'name email'); // Assuming `admin` is a user reference
+      .populate('members', 'name email profile_pic')
+      .populate('admin', 'name email profile_pic'); // Assuming `admin` is a user reference
 
     if (!targetGroup) {
       return res.status(404).json({ message: "Group not found" });
