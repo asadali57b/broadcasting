@@ -11,6 +11,14 @@ const userSchema = new mongoose.Schema({
         required: true,
         unique: true,
     },
+    about: {
+        type: String,
+        default: "Hey there! I'm using chat box.",
+    },
+    links: {
+        type: String,
+        default: "",
+    },
     password: {
         type: String,
         required: true,
