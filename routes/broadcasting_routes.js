@@ -36,6 +36,9 @@ router.delete('/remove_members_from_group',auth, Group_controller.remove_members
 router.delete('/delete_group/:id',auth, Group_controller.delete_group);
 router.put('/leave_group/:groupId',auth, Group_controller.leave_group);
 router.put('/make_group_admin',auth, Group_controller.make_group_admin);
+router.get('/get_non_group_members/:groupId',auth, Group_controller.get_non_group_members);
+router.get('/get_common_groups/:otherUserId',auth, Group_controller.get_common_groups);
+router.get('/get_group_members/:groupId',auth, Group_controller.get_group_members);
 
 router.post('/send_group_message',auth, group_messages_controller.send_group_message);
 router.get('/get_all_group_messages/:groupId',auth, group_messages_controller.get_all_messages_of_group);
