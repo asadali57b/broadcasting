@@ -358,16 +358,31 @@ async  get_group_members(req, res) {
 
     // Find the group and populate members and admin
     const targetGroup = await group.findById(groupId)
-      .populate('members', 'name email profile_pic')
-      .populate('admin', 'name email profile_pic'); // Assuming `admin` is a user reference
+      .populate('members', 'name email profile_pic about phone_number')
+      .populate('admin', 'name email profile_pic about phone_number'); // Assuming `admin` is a user reference
 
     if (!targetGroup) {
       return res.status(404).json({ message: "Group not found" });
     }
 
+    const currentUserId = req.user.userId;
+
+    const updatedMembers = targetGroup.members.map(member => {
+      const memberObject = member.toObject(); // Convert Mongoose document to plain JS object
+      if (memberObject._id.toString() === currentUserId.toString()) {
+        memberObject.name = "You";
+      }
+      return memberObject;
+    });
+
+    const adminObject = targetGroup.admin?.toObject?.() || targetGroup.admin;
+    if (adminObject && adminObject._id?.toString() === currentUserId.toString()) {
+      adminObject.name = "You";
+    }
+
     res.json({
-      admin: targetGroup.admin,
-      members: targetGroup.members,
+      admin: adminObject,
+      members: updatedMembers,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
