@@ -254,15 +254,12 @@ async get_conversations(req, res) {
     const userConvoMap = new Map();
 
     for (const msg of messages) {
-      // Skip messages with null sender or receiver
       if (!msg.sender || !msg.receiver) continue;
-      
+
       const isSender = msg.sender._id.toString() === userId;
       const otherUser = isSender ? msg.receiver : msg.sender;
-      
-      // Skip if otherUser is null or doesn't have _id
       if (!otherUser || !otherUser._id) continue;
-      
+
       const otherUserId = otherUser._id.toString();
 
       if (!userConvoMap.has(otherUserId)) {
@@ -305,12 +302,13 @@ async get_conversations(req, res) {
     const userConversations = Array.from(userConvoMap.values());
 
     // === GROUP CONVERSATIONS ===
-    const groups = await group.find({ members: userId }).lean();
+    const groups = await group.find({ members: userId })
+      .populate('members', 'name profile_pic email phone_number about')  // Populate members here
+      .lean();
 
-    // 2. For each group, fetch messages and build response
     const groupConversations = await Promise.all(
-      groups.map(async (group) => {
-        const messages = await group_messages.find({ group_id: group._id })
+      groups.map(async (grp) => {
+        const messages = await group_messages.find({ group_id: grp._id })
           .populate('sender', 'name profile_pic')
           .sort({ timestamp: 1 })
           .lean();
@@ -319,9 +317,8 @@ async get_conversations(req, res) {
         const sent_messages = [];
 
         for (const msg of messages) {
-          // Skip messages with null sender
           if (!msg.sender) continue;
-          
+
           const formatted = {
             _id: msg._id,
             content: msg.content,
@@ -346,25 +343,38 @@ async get_conversations(req, res) {
           msg => msg.is_seen === false
         ).length;
 
+        // Prepare members list
+        const groupMembers = grp.members.map(member => ({
+          _id: member._id,
+          name: member.name,
+          email: member.email,
+          phone_number: member.phone_number,
+          profile_pic: member.profile_pic || '',
+          about: member.about || ''
+        }));
+
         return {
-          group_id: group._id,
-          name: group.name,
-          group_pic: group.group_pic || '',
-          total_members: group.members.length,
+          group_id: grp._id,
+          name: grp.name,
+          group_pic: grp.group_pic || '',
+          total_members: grp.members.length,
           total_messages: messages.length,
           unread_messages,
           received_messages,
-          sent_messages
+          sent_messages,
+          group_members: groupMembers
         };
       })
     );
-    
+
     res.json({ userConversations, groupConversations });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });
   }
 }
+
 // GET /api/messages/user/:userId
 async get_user_messages(req, res) {
   try {
