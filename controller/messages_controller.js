@@ -362,6 +362,7 @@ async get_conversations(req, res) {
           unread_messages,
           received_messages,
           sent_messages,
+          group_admin: grp.admin,
           group_members: groupMembers
         };
       })
